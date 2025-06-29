@@ -36,9 +36,8 @@ pip install -r requirements.txt
 ```bash
 mkdir -p models/qwen3
 cd models/qwen3
-# 推荐直接用 transformers/huggingface-cli
-transformers-cli download Qwen/Qwen3-1.7B --cache-dir .
-# 或
+# 推荐直接用 huggingface-cli
+# 建议替换源 export HF_ENDPOINT=https://hf-mirror.com
 # huggingface-cli download Qwen/Qwen3-1.7B --local-dir .
 cd ../..
 ```
@@ -47,8 +46,6 @@ cd ../..
 ```bash
 mkdir -p models/embedding
 cd models/embedding
-transformers-cli download Qwen/Qwen3-Embedding-0.6B --cache-dir .
-# 或
 # huggingface-cli download Qwen/Qwen3-Embedding-0.6B --local-dir .
 cd ../..
 ```
@@ -60,7 +57,8 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ### 额外说明
 - 向量数据库和上传文件目录会自动生成。
-
+- 目前只支持单轮对话（single-turn），后续将尽快更新多轮对话（multi-turn）的记忆。
+- 目前RAG引用的前端显示可能还有问题，预计这周会修复。
 ---
 
 ## 2. 前端部署
@@ -89,14 +87,6 @@ npm run build
 
 ## 3. 其他
 - `.gitignore` 已自动排除大文件、依赖、数据库、模型权重等。
-- 如需推送到 GitHub，直接执行：
-```bash
-git init
-git add .
-git commit -m "init project"
-git remote add origin <your-repo-url>
-git push -u origin main
-```
 
 ---
 
