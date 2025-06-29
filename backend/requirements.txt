@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+starlette
+langchain
+langchain-community
+langchain-chroma
+langchain-huggingface
+langchain_community
+torch
+transformers
+PyPDF2
+unstructured

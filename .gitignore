@@ -1,0 +1,27 @@
+# .gitignore
+# Node.js
+frontend/node_modules/
+frontend/dist/
+
+# Python
+backend/.venv/
+backend/venv/
+backend/.mypy_cache/
+backend/.pytest_cache/
+backend/.env
+__pycache__/
+**/__pycache__/
+
+# 数据库和向量库
+vector_database/
+
+# 上传文件
+database/uploads/
+
+# 模型权重和大文件
+models/
+
+# 其他
+*.log
+.DS_Store
+.env
