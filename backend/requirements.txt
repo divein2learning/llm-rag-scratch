@@ -11,3 +11,5 @@ torch
 transformers
 PyPDF2
 unstructured
+python-multipart
+sentence-transformers
