@@ -140,6 +140,7 @@ def run_llm_chat(question):
 # ==== 请求体 ==== #
 class QueryRequest(BaseModel):
     question: str
+    messages: list = []  # 新增，支持多轮对话
 
 # ==== API ==== #
 
@@ -164,9 +165,11 @@ def _query_agent_logic(question: str):
 @router.post("/query")
 def query_agent(request: QueryRequest):
     logger.info(f"[Agent] /query 收到问题: {request.question}")
+    logger.info(f"[Agent] 当前上下文: {request.messages}")
     def event_stream():
         model, tokenizer = get_llm_raw()
-        messages = [{"role": "user", "content": request.question}]
+        # 支持多轮对话，拼接历史
+        messages = request.messages + [{"role": "user", "content": request.question}]
         q = Queue()
         def stream_callback(text):
             q.put(json.dumps({"delta": text}, ensure_ascii=False) + "\n")

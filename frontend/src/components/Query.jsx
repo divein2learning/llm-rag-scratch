@@ -49,7 +49,10 @@ export default function Query() {
       const response = await fetch("http://localhost:8000/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({
+          question,
+          messages: history.map(({ role, content }) => ({ role, content })), // 传递历史
+        }),
       });
       if (!response.ok) throw new Error("接口请求失败");
       const reader = response.body.getReader();
