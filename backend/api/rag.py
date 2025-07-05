@@ -28,7 +28,17 @@ def get_embeddings_singleton():
     global embeddings
     if embeddings is None:
         logger.info("Loading embeddings model...")
-        embeddings = get_embeddings(str(EMBEDDING_MODEL), str(EMBEDDING_CACHE))
+        import torch
+        from transformers import AutoModel, AutoTokenizer
+        try:
+            embeddings = get_embeddings(str(EMBEDDING_MODEL), str(EMBEDDING_CACHE), torch_dtype=torch.bfloat16)
+        except Exception as e:
+            logger.warning(f"embeddings bfloat16 加载失败，尝试 float16: {e}")
+            try:
+                embeddings = get_embeddings(str(EMBEDDING_MODEL), str(EMBEDDING_CACHE), torch_dtype=torch.float16)
+            except Exception as e2:
+                logger.warning(f"embeddings float16 加载失败，回退 float32: {e2}")
+                embeddings = get_embeddings(str(EMBEDDING_MODEL), str(EMBEDDING_CACHE), torch_dtype=torch.float32)
     return embeddings
 
 def get_vectorstore_singleton():
@@ -42,15 +52,35 @@ def get_llm_raw():
     global llm_raw_model, llm_raw_tokenizer
     if llm_raw_model is None or llm_raw_tokenizer is None:
         from transformers import AutoTokenizer, AutoModelForCausalLM
+        import torch
         model_path = str(MODEL_PATH)
         logger.info("[Agent] Loading raw LLM and tokenizer (singleton)...")
         llm_raw_tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-        llm_raw_model = AutoModelForCausalLM.from_pretrained(
-            model_path,
-            device_map="auto",
-            torch_dtype="auto",
-            trust_remote_code=True
-        )
+        # 优先尝试bfloat16，若不支持可改为float16
+        try:
+            llm_raw_model = AutoModelForCausalLM.from_pretrained(
+                model_path,
+                device_map="auto",
+                torch_dtype=torch.bfloat16,
+                trust_remote_code=True
+            )
+        except Exception as e:
+            logger.warning(f"bfloat16 加载失败，尝试 float16: {e}")
+            try:
+                llm_raw_model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    device_map="auto",
+                    torch_dtype=torch.float16,
+                    trust_remote_code=True
+                )
+            except Exception as e2:
+                logger.warning(f"float16 加载失败，回退 float32: {e2}")
+                llm_raw_model = AutoModelForCausalLM.from_pretrained(
+                    model_path,
+                    device_map="auto",
+                    torch_dtype=torch.float32,
+                    trust_remote_code=True
+                )
     return llm_raw_model, llm_raw_tokenizer
 
 # ==== Agent判断 ==== #
