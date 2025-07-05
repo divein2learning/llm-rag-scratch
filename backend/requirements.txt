@@ -9,5 +9,8 @@ langchain-huggingface
 langchain_community
 torch
 transformers
+accelerate
 PyPDF2
 unstructured
+python-multipart
+sentence-transformers
