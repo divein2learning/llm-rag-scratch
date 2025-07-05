@@ -29,6 +29,7 @@ export default function Query() {
   const [showSources, setShowSources] = useState(false);
   const [history, setHistory] = useState([]); // 聊天历史
   const answerRef = useRef("");
+  const chatHistoryRef = useRef(null);
 
   const handleQuery = async () => {
     if (!question.trim()) return;
@@ -38,6 +39,12 @@ export default function Query() {
     setSources([]);
     setHistory((h) => [...h, { role: "user", content: question }]);
     setQuestion("");
+    let aiMsgIdx = null;
+    let aiMsg = { role: "ai", content: "", sources: [], thinking: "", _thinkingFolded: false, _sourcesFolded: false };
+    setHistory((h) => {
+      aiMsgIdx = h.length + 1;
+      return [...h, aiMsg];
+    });
     try {
       const response = await fetch("http://localhost:8000/api/query", {
         method: "POST",
@@ -45,21 +52,113 @@ export default function Query() {
         body: JSON.stringify({ question }),
       });
       if (!response.ok) throw new Error("接口请求失败");
-      const data = await response.json();
-      setAnswer(data.answer || "");
-      setSources(Array.isArray(data.sources) ? data.sources : []);
-      setShowSources(!!(data.sources && data.sources.length));
-      setHistory((h) => [
-        ...h,
-        {
-          role: "ai",
-          content: data.answer || "",
-          sources: Array.isArray(data.sources) ? data.sources : [],
-          thinking: data.thinking || "",
-          _thinkingFolded: false, // 新增：默认不折叠
-          _sourcesFolded: false // 新增：默认不折叠
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let done = false;
+      let buffer = "";
+      let thinking = "";
+      let content = "";
+      let inThinking = false;
+      let thinkingBuffer = "";
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+          // 处理多行 JSON
+          let lines = buffer.split(/\r?\n/);
+          buffer = lines.pop(); // 最后一行可能是不完整的，留到下次
+          for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+            try {
+              const data = JSON.parse(line);
+              if (typeof data.delta === "string") {
+                let delta = data.delta;
+                let i = 0;
+                while (i < delta.length) {
+                  if (!inThinking) {
+                    const startIdx = delta.indexOf('<think>', i);
+                    if (startIdx === -1) {
+                      // 没有 <think>，全是普通内容
+                      const normalText = delta.slice(i);
+                      if (normalText) {
+                        content += normalText;
+                        setAnswer(content);
+                        setHistory((h) => {
+                          const newH = [...h];
+                          const aiIdx = newH.length - 1;
+                          if (aiIdx >= 0 && newH[aiIdx].role === "ai") {
+                            newH[aiIdx] = { ...newH[aiIdx], content, thinking };
+                          }
+                          return newH;
+                        });
+                      }
+                      break;
+                    } else {
+                      // 先加前面的普通内容
+                      if (startIdx > i) {
+                        const normalText = delta.slice(i, startIdx);
+                        if (normalText) {
+                          content += normalText;
+                          setAnswer(content);
+                          setHistory((h) => {
+                            const newH = [...h];
+                            const aiIdx = newH.length - 1;
+                            if (aiIdx >= 0 && newH[aiIdx].role === "ai") {
+                              newH[aiIdx] = { ...newH[aiIdx], content, thinking };
+                            }
+                            return newH;
+                          });
+                        }
+                      }
+                      // 进入思考模式
+                      inThinking = true;
+                      i = startIdx + 7; // 跳过 <think>
+                      thinkingBuffer = "";
+                    }
+                  } else {
+                    const endIdx = delta.indexOf('</think>', i);
+                    if (endIdx === -1) {
+                      // 没有 </think>，全部加到思考
+                      thinkingBuffer += delta.slice(i);
+                      thinking += delta.slice(i);
+                      setHistory((h) => {
+                        const newH = [...h];
+                        const aiIdx = newH.length - 1;
+                        if (aiIdx >= 0 && newH[aiIdx].role === "ai") {
+                          newH[aiIdx] = { ...newH[aiIdx], thinking };
+                        }
+                        return newH;
+                      });
+                      break;
+                    } else {
+                      // 有 </think>，加到思考，然后退出思考模式
+                      thinkingBuffer += delta.slice(i, endIdx);
+                      thinking += delta.slice(i, endIdx);
+                      setHistory((h) => {
+                        const newH = [...h];
+                        const aiIdx = newH.length - 1;
+                        if (aiIdx >= 0 && newH[aiIdx].role === "ai") {
+                          newH[aiIdx] = { ...newH[aiIdx], thinking };
+                        }
+                        return newH;
+                      });
+                      inThinking = false;
+                      i = endIdx + 8; // 跳过 </think>
+                      thinkingBuffer = "";
+                    }
+                  }
+                }
+              }
+            } catch (e) {
+              // 不是合法 JSON，忽略
+            }
+          }
         }
-      ]);
+      }
+      // 结束后可选：处理 sources
+      // 可根据后端最终返回格式调整
     } catch (err) {
       setAnswer("");
       setHistory((h) => [...h, { role: "ai", content: "查询失败：" + err.message }]);
@@ -68,9 +167,15 @@ export default function Query() {
     }
   };
 
+  useEffect(() => {
+    if (chatHistoryRef.current) {
+      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
+    }
+  }, [history]);
+
   return (
     <div className="owui-chat-wrap">
-      <div className="owui-chat-history">
+      <div className="owui-chat-history" ref={chatHistoryRef}>
         {history.length === 0 && (
           <div className="owui-empty">开始你的知识库对话吧~</div>
         )}

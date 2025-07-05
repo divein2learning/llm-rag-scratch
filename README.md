@@ -36,10 +36,8 @@ pip install -r requirements.txt
 ```bash
 mkdir -p models/qwen3
 cd models/qwen3
-# 推荐直接用 transformers/huggingface-cli
-transformers-cli download Qwen/Qwen3-1.7B --cache-dir .
-# 或
-# huggingface-cli download Qwen/Qwen3-1.7B --local-dir .
+# 推荐直接用 huggingface-cli
+huggingface-cli download Qwen/Qwen3-1.7B --local-dir .
 cd ../..
 ```
 
@@ -47,15 +45,13 @@ cd ../..
 ```bash
 mkdir -p models/embedding
 cd models/embedding
-transformers-cli download Qwen/Qwen3-Embedding-0.6B --cache-dir .
-# 或
-# huggingface-cli download Qwen/Qwen3-Embedding-0.6B --local-dir .
+huggingface-cli download Qwen/Qwen3-Embedding-0.6B --local-dir .
 cd ../..
 ```
 
 ### 启动后端服务
 ```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 额外说明
@@ -83,19 +79,6 @@ npm run dev
 ### 构建生产包
 ```bash
 npm run build
-```
-
----
-
-## 3. 其他
-- `.gitignore` 已自动排除大文件、依赖、数据库、模型权重等。
-- 如需推送到 GitHub，直接执行：
-```bash
-git init
-git add .
-git commit -m "init project"
-git remote add origin <your-repo-url>
-git push -u origin main
 ```
 
 ---

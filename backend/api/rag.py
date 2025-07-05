@@ -8,6 +8,8 @@ from ..core.vectorstore import get_embeddings, get_vectorstore
 from ..core.prompt import zh_prompt, judge_prompt
 from .config import MODEL_PATH, EMBEDDING_MODEL, EMBEDDING_CACHE, VECTOR_DB_DIR
 import logging
+from queue import Queue, Empty
+import threading
 
 # 设置logger
 logger = logging.getLogger("rag")
@@ -132,4 +134,21 @@ def _query_agent_logic(question: str):
 @router.post("/query")
 def query_agent(request: QueryRequest):
     logger.info(f"[Agent] /query 收到问题: {request.question}")
-    return _query_agent_logic(request.question)
+    def event_stream():
+        model, tokenizer = get_llm_raw()
+        messages = [{"role": "user", "content": request.question}]
+        q = Queue()
+        def stream_callback(text):
+            q.put(json.dumps({"delta": text}, ensure_ascii=False) + "\n")
+        def run_llm():
+            result = llm_chat(model, tokenizer, messages, stream_callback=stream_callback)
+            q.put(json.dumps({"finish": True, "result": result}, ensure_ascii=False) + "\n")
+            q.put(None)  # 结束标志
+        t = threading.Thread(target=run_llm)
+        t.start()
+        while True:
+            item = q.get()
+            if item is None:
+                break
+            yield item
+    return StreamingResponse(event_stream(), media_type="application/json")
