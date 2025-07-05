@@ -28,11 +28,15 @@ export default function Query() {
   const [loading, setLoading] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const [history, setHistory] = useState([]); // 聊天历史
+  const [autoScroll, setAutoScroll] = useState(true); // 是否自动滚动
+  const isAutoScrollingRef = useRef(false); // 标记是否正在自动滚动
+
   const answerRef = useRef("");
   const chatHistoryRef = useRef(null);
 
   const handleQuery = async () => {
     if (!question.trim()) return;
+    setAutoScroll(true); // 用户发送时强制开启自动滚动
     setShowSources(false);
     setLoading(true);
     setAnswer("");
@@ -170,11 +174,50 @@ export default function Query() {
     }
   };
 
+  // 滚动事件监听，判断用户是否主动离开底部
   useEffect(() => {
-    if (chatHistoryRef.current) {
-      chatHistoryRef.current.scrollTop = chatHistoryRef.current.scrollHeight;
+    const chatDiv = chatHistoryRef.current;
+    if (!chatDiv) return;
+    const handleScroll = () => {
+      if (isAutoScrollingRef.current) return; // 自动滚动时不处理
+      // 只有在autoScroll为true且用户离开底部时才暂停自动滚动
+      const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop - chatDiv.clientHeight < 2;
+      if (!atBottom && autoScroll) {
+        setAutoScroll(false);
+      } else if (atBottom && !autoScroll) {
+        setAutoScroll(true);
+      }
+    };
+    chatDiv.addEventListener('scroll', handleScroll);
+    return () => chatDiv.removeEventListener('scroll', handleScroll);
+  }, [autoScroll]);
+
+  // history变化时，若autoScroll为true则滚动到底部
+  useEffect(() => {
+    if (autoScroll && chatHistoryRef.current) {
+      isAutoScrollingRef.current = true;
+      const chatDiv = chatHistoryRef.current;
+      // 平滑滚动到底部
+      chatDiv.scrollTo({
+        top: chatDiv.scrollHeight,
+        behavior: "smooth"
+      });
+      // 滚动动画结束后再解除自动滚动标记
+      const handleScrollEnd = () => {
+        const atBottom = chatDiv.scrollHeight - chatDiv.scrollTop - chatDiv.clientHeight < 20;
+        if (atBottom) {
+          isAutoScrollingRef.current = false;
+          chatDiv.removeEventListener('scroll', handleScrollEnd);
+        }
+      };
+      chatDiv.addEventListener('scroll', handleScrollEnd);
+      // 兜底：如果动画没触发scroll事件，500ms后也解除
+      setTimeout(() => {
+        isAutoScrollingRef.current = false;
+        chatDiv.removeEventListener('scroll', handleScrollEnd);
+      }, 500);
     }
-  }, [history]);
+  }, [history, autoScroll]);
 
   return (
     <div className="owui-chat-wrap">
@@ -270,9 +313,10 @@ export default function Query() {
           disabled={loading}
         />
         <button className="owui-send-btn" type="submit" disabled={loading || !question.trim()}>
-          发送
+          {loading ? <span className="spinner"></span> : '发送'}
         </button>
       </form>
+      {/* spinner 样式已移至 App.css */}
     </div>
   );
 }

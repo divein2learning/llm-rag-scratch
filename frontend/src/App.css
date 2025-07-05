@@ -379,6 +379,22 @@ html, body {
   transform: scale(1.08);
 }
 
+/* spinner样式 */
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ccc;
+  border-top: 2px solid #409eff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* 侧边栏折叠时主区域居中，且无左侧留白 */
 .kb-sidebar-hide ~ .owui-main {
   margin-left: 0 !important;
