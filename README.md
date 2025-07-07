@@ -38,6 +38,7 @@ mkdir -p models/qwen3
 cd models/qwen3
 # 推荐直接用 huggingface-cli
 # 建议替换源 export HF_ENDPOINT=https://hf-mirror.com
+# Win下用这个$env:HF_ENDPOINT = "https://hf-mirror.com"
 huggingface-cli download Qwen/Qwen3-1.7B --local-dir .
 cd ../..
 ```
